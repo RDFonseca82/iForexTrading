@@ -162,71 +162,71 @@ while True:
                                 idcliente=idcliente
                             )
 
-                    # =================================================
-                    # 📊 PASSO 2 — TRADES FECHADOS (BINANCE)
-                    # =================================================
-                    elif corretora == "binance":
-                        closed_trades = binance_get_closed_trades(
-                            api_key,
-                            api_secret,
-                            symbol,
-                            env=env,
-                            limit=10
-                        )
-                    
-                        for t in closed_trades:
-                            trade_id = f"BINANCE-{t['orderId']}"
-                    
-                            if trade_id in SENT_TRADES:
-                                continue
-                    
-                            payload = {
-                                "IDCliente": idcliente,
-                                "Corretora": "binance",
-                                "Symbol": t["symbol"],
-                                "Side": t["side"],
-                                "EntryPrice": t["entry_price"],
-                                "ExitPrice": t["exit_price"],
-                                "Qty": t["qty"],
-                                "Fee": t["fee"],
-                                "PnL": t["pnl"],
-                                "OrderID": trade_id,
-                                "OpenTime": t["createdTime"],
-                                "CloseTime": t["updatedTime"],
-                                "Environment": env
-                            }
-                    
-                            try:
-                                log_debug(
-                                    "main",
-                                    "A enviar trade fechado BINANCE para API",
-                                    payload
-                                )
-                    
-                                r = requests.post(
-                                    TRADES_API_URL,
-                                    json=payload,
-                                    timeout=10
-                                )
-                    
-                                r.raise_for_status()
-                    
-                                SENT_TRADES.add(trade_id)
-                    
-                                log_info(
-                                    "main",
-                                    "Trade fechado BINANCE enviado",
-                                    payload,
-                                    idcliente=idcliente
-                                )
-                    
-                            except Exception as e:
-                                log_error(
-                                    "main",
-                                    "Erro ao enviar trade fechado BINANCE",
-                                    e,
-                                    idcliente=idcliente
-                                )
+                # =================================================
+                # 📊 PASSO 2 — TRADES FECHADOS (BINANCE)
+                # =================================================
+                if corretora == "binance":
+                    closed_trades = binance_get_closed_trades(
+                        api_key,
+                        api_secret,
+                        symbol,
+                        env=env,
+                        limit=10
+                    )
+                
+                    for t in closed_trades:
+                        trade_id = f"BINANCE-{t['orderId']}"
+                
+                        if trade_id in SENT_TRADES:
+                            continue
+                
+                        payload = {
+                            "IDCliente": idcliente,
+                            "Corretora": "binance",
+                            "Symbol": t["symbol"],
+                            "Side": t["side"],
+                            "EntryPrice": t["entry_price"],
+                            "ExitPrice": t["exit_price"],
+                            "Qty": t["qty"],
+                            "Fee": t["fee"],
+                            "PnL": t["pnl"],
+                            "OrderID": trade_id,
+                            "OpenTime": t["createdTime"],
+                            "CloseTime": t["updatedTime"],
+                            "Environment": env
+                        }
+                
+                        try:
+                            log_debug(
+                                "main",
+                                "A enviar trade fechado BINANCE para API",
+                                payload
+                            )
+                
+                            r = requests.post(
+                                TRADES_API_URL,
+                                json=payload,
+                                timeout=10
+                            )
+                
+                            r.raise_for_status()
+                
+                            SENT_TRADES.add(trade_id)
+                
+                            log_info(
+                                "main",
+                                "Trade fechado BINANCE enviado",
+                                payload,
+                                idcliente=idcliente
+                            )
+                
+                        except Exception as e:
+                            log_error(
+                                "main",
+                                "Erro ao enviar trade fechado BINANCE",
+                                e,
+                                idcliente=idcliente
+                            )
 
 
 
