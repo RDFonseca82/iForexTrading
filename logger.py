@@ -1,6 +1,4 @@
-import requests
-import yaml
-import datetime
+import requests, yaml, datetime
 
 cfg = yaml.safe_load(open("config.yaml"))
 
@@ -17,6 +15,3 @@ def log_event(idcliente, message, data=None, level="INFO"):
         requests.post(cfg["api"]["log_url"], json=payload, timeout=5)
     except:
         pass
-
-    with open(cfg["logging"]["local_file"], "a") as f:
-        f.write(str(payload) + "\n")
