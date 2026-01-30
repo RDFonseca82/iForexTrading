@@ -1,20 +1,32 @@
 import requests
 import pandas as pd
+from logger import log_debug, log_error
 
 def get_candles(symbol, timeframe="5min", limit=200):
-    url = "https://api.twelvedata.com/time_series"
-    params = {
-        "symbol": symbol.replace("USDT", "/USDT"),
-        "interval": timeframe,
-        "apikey": "a0e1684f24ef45f98a0f8e46eb3e03bf",
-        "outputsize": limit
-    }
+    log_debug("market_data", f"A obter candles {symbol}")
 
-    r = requests.get(url, params=params, timeout=10)
-    r.raise_for_status()
+    try:
+        r = requests.get(
+            "https://api.twelvedata.com/time_series",
+            params={
+                "symbol": symbol.replace("USDT", "/USDT"),
+                "interval": timeframe,
+                "apikey": "SUA_TWELVEDATA_KEY",
+                "outputsize": limit
+            },
+            timeout=10
+        )
+        r.raise_for_status()
+        raw = r.json()
 
-    df = pd.DataFrame(r.json()["values"])
-    for c in ["open", "high", "low", "close"]:
-        df[c] = df[c].astype(float)
+        log_debug("market_data", "Resposta TwelveData", raw)
 
-    return df.iloc[::-1].reset_index(drop=True)
+        df = pd.DataFrame(raw["values"])
+        for c in ["open", "high", "low", "close"]:
+            df[c] = df[c].astype(float)
+
+        return df.iloc[::-1].reset_index(drop=True)
+
+    except Exception as e:
+        log_error("market_data", "Erro ao obter candles", e)
+        return None
