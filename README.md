@@ -5,7 +5,7 @@ Bot para utilizar com a plataforma iForex.app
 
 # Instalar
 
-curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/install.sh -o install.sh
+curl -H "Authorization: token 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 " \ -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/install.sh -o install.sh
 
 chmod +x install.sh
 
@@ -13,7 +13,7 @@ sudo ./install.sh
 
 # Update
 
-curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/update.sh -o update.sh
+curl -H "Authorization: token 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 " \ -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/update.sh -o update.sh
 
 chmod +x update.sh
 
