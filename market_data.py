@@ -11,7 +11,7 @@ def get_candles(symbol, timeframe="5min", limit=200):
             params={
                 "symbol": symbol.replace("USDT", "/USDT"),
                 "interval": timeframe,
-                "apikey": "SUA_TWELVEDATA_KEY",
+                "apikey": "a0e1684f24ef45f98a0f8e46eb3e03bf",
                 "outputsize": limit
             },
             timeout=10
