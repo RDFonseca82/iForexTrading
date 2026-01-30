@@ -157,21 +157,21 @@ def place_order(api_key, api_secret, symbol, side, qty, env="real", sl=None, tp=
 # SL / TP (ORDENS DE PROTEÇÃO)
 # =====================================================
 
-def _send_protection_order(api_key, api_secret, symbol, side, order_type, price, env):
+def _send_protection_order(api_key, api_secret, symbol, order_type, price, env):
     try:
         ts = int(time.time() * 1000)
+        price = round(float(price), 2)
 
         params = (
             f"symbol={symbol}"
-            f"&side={side}"
             f"&type={order_type}"
             f"&stopPrice={price}"
             f"&closePosition=true"
+            f"&workingType=MARK_PRICE"
             f"&timestamp={ts}"
         )
 
         signature = _sign(api_secret, params)
-
         url = f"{_base_url(env)}/fapi/v1/order?{params}&signature={signature}"
 
         log_debug("binance", f"A enviar {order_type}", {
@@ -192,3 +192,4 @@ def _send_protection_order(api_key, api_secret, symbol, side, order_type, price,
     except Exception as e:
         log_error("binance", f"Erro ao enviar {order_type}", e)
         return None
+
