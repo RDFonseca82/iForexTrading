@@ -1,0 +1,19 @@
+api:
+  config_url: "http://invest.rdfonseca.com/api/forex_api.php"
+  heartbeat_url: "http://invest.rdfonseca.com/api/forex_api_ok.php"
+  log_url: "http://invest.rdfonseca.com/api/forex_api_log.php"
+
+heartbeat:
+  interval_seconds: 300
+
+bot:
+  poll_interval_seconds: 60
+  timeframe: "5m"
+  candle_limit: 200
+
+market_data:
+  provider: "twelvedata"   # ou polygon
+  api_key: "SUA_API_KEY_AQUI"
+
+logging:
+  local_file: "/var/log/forex_bot.log"
