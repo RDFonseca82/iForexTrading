@@ -1,54 +1,60 @@
 import time
-import yaml
 from api_client import get_clients
 from market_data import get_candles
 from strategy_falcon import falcon_strategy
-from webhook_sender import send_signal
+from bybit_client import has_open_position, place_order
 from logger import log_event
 import heartbeat
-
-cfg = yaml.safe_load(open("config.yaml"))
 
 heartbeat.start()
 
 while True:
     try:
-        clients = get_clients()
+        for c in get_clients():
 
-        for c in clients:
-            if c["BotActive"] != 1:
+            if c["BotActive"] != 1 or c["Corretora"].lower() != "bybit":
                 continue
 
-            df = get_candles(
-                symbol=c["TipoMoeda"],
-                timeframe="5min",
-                limit=cfg["bot"]["candle_limit"]
-            )
+            env = c.get("BybitEnvironment", "real")
 
+            if has_open_position(
+                c["CorretoraClientAPIKey"],
+                c["CorretoraClientAPISecret"],
+                c["TipoMoeda"],
+                env
+            ):
+                log_event(
+                    c["IDCliente"],
+                    "Ordem bloqueada: posição já aberta",
+                    {"symbol": c["TipoMoeda"], "env": env}
+                )
+                continue
+
+            df = get_candles(c["TipoMoeda"])
             signal = falcon_strategy(df, c)
 
-            if signal:
-                send_signal(
-                    broker=c["Corretora"],
-                    api_key=c["CorretoraClientAPIKey"],
-                    symbol=c["TipoMoeda"],
-                    lot=c["LotSize"],
-                    signal=signal
-                )
+            if not signal:
+                continue
 
-                log_event(
-                    idcliente=c["IDCliente"],
-                    message=f"Sinal {signal['side']} enviado",
-                    data=signal
-                )
+            res = place_order(
+                c["CorretoraClientAPIKey"],
+                c["CorretoraClientAPISecret"],
+                c["TipoMoeda"],
+                signal["side"],
+                c["LotSize"],
+                env,
+                signal["stop"],
+                signal["take"]
+            )
 
-        time.sleep(cfg["bot"]["poll_interval_seconds"])
+            log_event(
+                c["IDCliente"],
+                f"Ordem executada ({env.upper()})",
+                res
+            )
+
+        time.sleep(60)
 
     except Exception as e:
-        log_event(
-            idcliente=0,
-            message="Erro geral no BOT",
-            data=str(e),
-            level="ERROR"
-        )
+        log_event(0, "Erro geral do BOT", str(e), "ERROR")
         time.sleep(10)
