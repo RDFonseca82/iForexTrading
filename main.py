@@ -1,7 +1,7 @@
 import time
 
 from api_client import get_clients
-from market_data import get_candles_bybit, get_candles_binance
+from market_data import get_candles_binance
 from strategy_falcon import falcon_strategy
 from bybit_client import (
     has_open_position as bybit_has_position,
