@@ -19,19 +19,38 @@ while True:
         for c in clients:
             try:
                 log_debug("main", "Processar cliente", c)
-
+                
                 if c.get("BotActive") != 1:
                     log_debug("main", "BotActive=0, ignorado", c.get("IDCliente"))
                     continue
-
-                if c.get("Corretora", "").lower() != "bybit":
-                    log_debug("main", "Corretora não suportada", c.get("Corretora"))
+                
+                # 🔒 Validação OBRIGATÓRIA antes de qualquer chamada à corretora
+                required_fields = [
+                    "LotSize",
+                    "StopLoss",
+                    "TakeProfit",
+                    "CorretoraClientAPIKey",
+                    "CorretoraClientAPISecret"
+                ]
+                
+                missing = [f for f in required_fields if not c.get(f)]
+                
+                if missing:
+                    log_info(
+                        "main",
+                        "Cliente ignorado: configuração incompleta",
+                        {
+                            "missing_fields": missing
+                        },
+                        idcliente=c.get("IDCliente")
+                    )
                     continue
-
-                env = c.get("BybitEnvironment", "real")
+                
+                # Environment default seguro
+                env = c.get("BybitEnvironment") or "real"
                 symbol = c.get("TipoMoeda")
-
-                # 🔒 Proteção: posição aberta
+                
+                # 🔒 SÓ AGORA falamos com a Bybit
                 if has_open_position(
                     c["CorretoraClientAPIKey"],
                     c["CorretoraClientAPISecret"],
@@ -41,10 +60,11 @@ while True:
                     log_info(
                         "main",
                         "Ordem bloqueada: posição já aberta",
-                        {"symbol": symbol, "env": env},
+                        {"symbol": symbol},
                         idcliente=c.get("IDCliente")
                     )
                     continue
+
 
                 df = get_candles(symbol)
                 if df is None or df.empty:
