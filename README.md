@@ -1,13 +1,27 @@
 # iForexTrading
 
-Instalar
+# Instalar
+
+curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/install.sh -o install.sh
 
 chmod +x install.sh
 
-curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/install.sh | bash
+sudo ./install.sh 
 
+# Update
 
+curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/update.sh -o update.sh
 
+chmod +x update.sh
+
+sudo ./update.sh
+
+# Servoço
+systemctl status iforextrading
+
+systemctl start iforextrading
+
+systemctl stop iforextrading
 
 
 # JSON Cliente exemplo
