@@ -165,7 +165,7 @@ while True:
                     # =================================================
                     # 📊 PASSO 2 — TRADES FECHADOS (BINANCE)
                     # =================================================
-                    if corretora == "binance":
+                    elif corretora == "binance":
                         closed_trades = binance_get_closed_trades(
                             api_key,
                             api_secret,
