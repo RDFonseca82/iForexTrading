@@ -2,7 +2,7 @@ import time, hmac, hashlib, requests, json
 from logger import log_debug, log_error
 
 def _base_url(env):
-    return "https://api-testnet.bybit.com" if env == "testnet" else "https://api.bybit.com"
+    return "https://api-demo.bybit.com" if env == "testnet" else "https://api.bybit.com"
 
 def _sign(secret, payload):
     return hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
