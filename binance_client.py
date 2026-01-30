@@ -193,3 +193,78 @@ def _send_protection_order(api_key, api_secret, symbol, order_type, price, env):
         log_error("binance", f"Erro ao enviar {order_type}", e)
         return None
 
+def get_closed_trades(api_key, api_secret, symbol, env="real", limit=20):
+    """
+    Retorna trades FECHADOS (Binance Futures)
+    """
+    try:
+        base = _base_url(env)
+        ts = int(time.time() * 1000)
+
+        # ----------------------------------
+        # 1️⃣ Verificar se posição está fechada
+        # ----------------------------------
+        query_pos = f"timestamp={ts}"
+        sign_pos = _sign(api_secret, query_pos)
+
+        url_pos = f"{base}/fapi/v2/positionRisk?{query_pos}&signature={sign_pos}"
+
+        r_pos = requests.get(
+            url_pos,
+            headers={"X-MBX-APIKEY": api_key},
+            timeout=10
+        )
+        r_pos.raise_for_status()
+
+        positions = r_pos.json()
+        pos = next((p for p in positions if p["symbol"] == symbol), None)
+
+        if not pos or float(pos["positionAmt"]) != 0:
+            return []
+
+        # ----------------------------------
+        # 2️⃣ Buscar trades executados
+        # ----------------------------------
+        query = (
+            f"symbol={symbol}"
+            f"&limit={limit}"
+            f"&timestamp={ts}"
+        )
+
+        sign = _sign(api_secret, query)
+        url = f"{base}/fapi/v1/userTrades?{query}&signature={sign}"
+
+        log_debug("binance", "A obter trades fechados", {
+            "symbol": symbol,
+            "env": env
+        })
+
+        r = requests.get(
+            url,
+            headers={"X-MBX-APIKEY": api_key},
+            timeout=10
+        )
+        r.raise_for_status()
+
+        trades = r.json()
+
+        closed = []
+        for t in trades:
+            closed.append({
+                "orderId": t["orderId"],
+                "symbol": t["symbol"],
+                "side": t["side"],
+                "entry_price": float(t["price"]),
+                "exit_price": float(t["price"]),  # market fill
+                "qty": float(t["qty"]),
+                "fee": float(t["commission"]),
+                "pnl": float(t.get("realizedPnl", 0)),
+                "createdTime": t["time"],
+                "updatedTime": t["time"]
+            })
+
+        return closed
+
+    except Exception as e:
+        log_error("binance", "Erro ao obter trades fechados", e)
+        return []
