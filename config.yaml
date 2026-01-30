@@ -2,6 +2,10 @@ bot:
   poll_interval_seconds: 60
   candle_limit: 200
 
+logging:
+  debug: true                  # 🔥 ATIVAR / DESATIVAR LOG DETALHADO
+  log_file: "/var/log/iforextrading_debug.log"
+
 api:
   config_url: "http://invest.rdfonseca.com/api/forex_api.php"
   heartbeat_url: "http://invest.rdfonseca.com/api/forex_api_ok.php"
