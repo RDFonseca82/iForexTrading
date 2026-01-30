@@ -49,7 +49,36 @@ def _send_api_log(level, message, data, idcliente):
         "Message": message,
         "Data": data
     }
+
     try:
-        requests.post(cfg["api"]["log_url"], json=payload, timeout=5)
-    except:
-        pass
+        r = requests.post(
+            cfg["api"]["log_url"],
+            json=payload,
+            timeout=5,
+            headers={"Content-Type": "application/json"}
+        )
+
+        # 🔍 LOG LOCAL DO RESULTADO
+        if r.status_code != 200:
+            _write_local(
+                "ERROR",
+                "logger",
+                "Erro ao enviar log para API",
+                {
+                    "status_code": r.status_code,
+                    "response": r.text,
+                    "payload": payload
+                }
+            )
+
+    except Exception as e:
+        _write_local(
+            "ERROR",
+            "logger",
+            "Exceção ao enviar log para API",
+            {
+                "error": str(e),
+                "payload": payload
+            }
+        )
+
