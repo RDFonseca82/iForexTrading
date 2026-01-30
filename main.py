@@ -126,22 +126,23 @@ while True:
                     )
                     continue
 
-                    # -------------------------------------------------
-                    # Market Data (SEMPRE Binance)
-                    # -------------------------------------------------
-                    df = get_candles_binance(
-                        symbol,
-                        interval="5m",
-                        env=env
+                # -------------------------------------------------
+                # Market Data (SEMPRE Binance)
+                # -------------------------------------------------
+                df = get_candles_binance(
+                    symbol,
+                    interval="5m",
+                    env=env
+                )
+                
+                if df is None or df.empty:
+                    log_debug(
+                        "main",
+                        "Sem candles válidos (Binance)",
+                        {"symbol": symbol}
                     )
-                    
-                    if df is None or df.empty:
-                        log_debug(
-                            "main",
-                            "Sem candles válidos (Binance)",
-                            {"symbol": symbol}
-                        )
-                        continue
+                    continue
+
 
 
                 # -------------------------------------------------
