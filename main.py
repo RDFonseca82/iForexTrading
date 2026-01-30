@@ -1,11 +1,13 @@
 import time
+import requests
 
 from api_client import get_clients
 from market_data import get_candles_binance
 from strategy_falcon import falcon_strategy
 from bybit_client import (
     has_open_position as bybit_has_position,
-    place_order as bybit_place_order
+    place_order as bybit_place_order,
+    get_closed_trades
 )
 from binance_client import (
     has_open_position as binance_has_position,
@@ -13,6 +15,16 @@ from binance_client import (
 )
 from logger import log_info, log_debug, log_error
 import heartbeat
+
+
+# =====================================================
+# CONFIG
+# =====================================================
+
+TRADES_API_URL = "http://invest.rdfonseca.com/api/forex_api_trades.php"
+
+# Evitar duplicados durante execução
+SENT_TRADES = set()
 
 
 # =====================================================
@@ -34,15 +46,13 @@ while True:
             try:
                 log_debug("main", "Processar cliente", c)
 
+                idcliente = c.get("IDCliente")
+
                 # -------------------------------------------------
                 # Ativo?
                 # -------------------------------------------------
                 if c.get("BotActive") != 1:
-                    log_debug(
-                        "main",
-                        "BotActive=0, ignorado",
-                        c.get("IDCliente")
-                    )
+                    log_debug("main", "BotActive=0, ignorado", idcliente)
                     continue
 
                 # -------------------------------------------------
@@ -68,7 +78,7 @@ while True:
                         "main",
                         "Cliente ignorado: configuração incompleta",
                         {"missing_fields": missing},
-                        idcliente=c.get("IDCliente")
+                        idcliente=idcliente
                     )
                     continue
 
@@ -80,18 +90,80 @@ while True:
                 api_secret = c["CorretoraClientAPISecret"]
                 symbol = c["TipoMoeda"]
 
-                # Ambiente
                 if corretora == "bybit":
                     env = c.get("BybitEnvironment") or "real"
                 else:
-                    # Binance não diferencia real/testnet da mesma forma
                     env = "testnet" if c.get("BybitEnvironment") == "testnet" else "real"
+
+                # =================================================
+                # 📊 PASSO 2 — TRADES FECHADOS (SÓ BYBIT)
+                # =================================================
+                if corretora == "bybit":
+                    closed_trades = get_closed_trades(
+                        api_key,
+                        api_secret,
+                        symbol,
+                        env=env,
+                        limit=10
+                    )
+
+                    for t in closed_trades:
+                        trade_id = t.get("orderId")
+
+                        if not trade_id or trade_id in SENT_TRADES:
+                            continue
+
+                        payload = {
+                            "IDCliente": idcliente,
+                            "Corretora": "bybit",
+                            "Symbol": t["symbol"],
+                            "Side": t["side"],
+                            "EntryPrice": t["entry_price"],
+                            "ExitPrice": t["exit_price"],
+                            "Qty": t["qty"],
+                            "Fee": t["fee"],
+                            "PnL": t["pnl"],
+                            "OrderID": trade_id,
+                            "OpenTime": t["createdTime"],
+                            "CloseTime": t["updatedTime"],
+                            "Environment": env
+                        }
+
+                        try:
+                            log_debug(
+                                "main",
+                                "A enviar trade fechado para API",
+                                payload
+                            )
+
+                            r = requests.post(
+                                TRADES_API_URL,
+                                json=payload,
+                                timeout=10
+                            )
+
+                            r.raise_for_status()
+
+                            SENT_TRADES.add(trade_id)
+
+                            log_info(
+                                "main",
+                                "Trade fechado enviado com sucesso",
+                                payload,
+                                idcliente=idcliente
+                            )
+
+                        except Exception as e:
+                            log_error(
+                                "main",
+                                "Erro ao enviar trade fechado",
+                                e,
+                                idcliente=idcliente
+                            )
 
                 # -------------------------------------------------
                 # Verificar posição aberta (ANTI-DUPLICADOS)
                 # -------------------------------------------------
-                has_position = False
-
                 if corretora == "bybit":
                     has_position = bybit_has_position(
                         api_key,
@@ -107,14 +179,7 @@ while True:
                         symbol,
                         env
                     )
-
                 else:
-                    log_error(
-                        "main",
-                        "Corretora não suportada",
-                        {"corretora": corretora},
-                        idcliente=c.get("IDCliente")
-                    )
                     continue
 
                 if has_position:
@@ -122,19 +187,19 @@ while True:
                         "main",
                         "Ordem bloqueada: posição já aberta",
                         {"symbol": symbol, "corretora": corretora},
-                        idcliente=c.get("IDCliente")
+                        idcliente=idcliente
                     )
                     continue
 
                 # -------------------------------------------------
-                # Market Data (SEMPRE Binance)
+                # Market Data (Binance)
                 # -------------------------------------------------
                 df = get_candles_binance(
                     symbol,
                     interval="5m",
                     env=env
                 )
-                
+
                 if df is None or df.empty:
                     log_debug(
                         "main",
@@ -142,8 +207,6 @@ while True:
                         {"symbol": symbol}
                     )
                     continue
-
-
 
                 # -------------------------------------------------
                 # Estratégia
@@ -169,7 +232,7 @@ while True:
                         tp=signal["take"]
                     )
 
-                elif corretora == "binance":
+                else:
                     result = binance_place_order(
                         api_key=api_key,
                         api_secret=api_secret,
@@ -185,7 +248,7 @@ while True:
                     "main",
                     f"Ordem executada ({corretora.upper()} | {env.upper()})",
                     result,
-                    idcliente=c.get("IDCliente")
+                    idcliente=idcliente
                 )
 
             except Exception as e:
