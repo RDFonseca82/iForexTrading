@@ -1,4 +1,5 @@
 import time, hmac, hashlib, requests, json
+from logger import log_debug, log_error
 
 def _base_url(env):
     return "https://api-testnet.bybit.com" if env == "testnet" else "https://api.bybit.com"
@@ -17,6 +18,11 @@ def _headers(key, sign, ts):
 
 # 🔎 VERIFICAR POSIÇÃO ABERTA
 def has_open_position(api_key, api_secret, symbol, env):
+    log_debug("bybit_client", "A verificar posição aberta", {
+        "symbol": symbol,
+        "env": env
+    })
+    
     ts = str(int(time.time() * 1000))
     query = f"category=linear&symbol={symbol}"
     sign_payload = ts + api_key + "5000" + query
@@ -27,6 +33,7 @@ def has_open_position(api_key, api_secret, symbol, env):
     r.raise_for_status()
 
     positions = r.json()["result"]["list"]
+    log_debug("bybit_client", "Resultado posição aberta", positions)
     for p in positions:
         if float(p["size"]) > 0:
             return True
@@ -34,6 +41,7 @@ def has_open_position(api_key, api_secret, symbol, env):
 
 # 🚀 ENVIAR ORDEM
 def place_order(api_key, api_secret, symbol, side, qty, env, sl, tp):
+    log_debug("bybit_client", "A enviar ordem", payload)
     ts = str(int(time.time() * 1000))
     payload = {
         "category": "linear",
@@ -52,4 +60,5 @@ def place_order(api_key, api_secret, symbol, side, qty, env, sl, tp):
     url = _base_url(env) + "/v5/order/create"
     r = requests.post(url, headers=_headers(api_key, sign, ts), data=body, timeout=10)
     r.raise_for_status()
+    log_debug("bybit_client", "Resposta Bybit", r.json())
     return r.json()
