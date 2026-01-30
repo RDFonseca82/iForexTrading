@@ -10,7 +10,6 @@ curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/inst
 
 
 
-
 #JSON Cliente exemplo
 {
   "IDCliente": 12,
