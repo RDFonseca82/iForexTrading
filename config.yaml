@@ -12,8 +12,12 @@ bot:
   candle_limit: 200
 
 market_data:
-  provider: "twelvedata"   # ou polygon
-  api_key: "SUA_API_KEY_AQUI"
+  provider: "twelvedata"
+  api_key: "SUA_TWELVEDATA_KEY"
+
+webhooks:
+  binance: "https://YOUR_BINANCE_WEBHOOK_URL"
+  bybit: "https://YOUR_BYBIT_WEBHOOK_URL"
 
 logging:
   local_file: "/var/log/forex_bot.log"
