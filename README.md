@@ -10,7 +10,8 @@ curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/inst
 
 
 
-#JSON Cliente exemplo
+# JSON Cliente exemplo
+
 {
   "IDCliente": 12,
   "TipoMoeda": "BTCUSDT",
@@ -23,3 +24,14 @@ curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/inst
   "CorretoraClientAPISecret": "API_SECRET_AQUI",
   "BybitEnvironment": "testnet"
 }
+
+
+# Corretora
+
+{
+  "Corretora": "bybit" | "binance",
+  "CorretoraClientAPIKey": "...",
+  "CorretoraClientAPISecret": "...",
+  "BybitEnvironment": "testnet" | "real"
+}
+
