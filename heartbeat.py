@@ -1,21 +1,13 @@
-import requests
-import time
-import yaml
-import threading
+import threading, time, requests, yaml
 
 cfg = yaml.safe_load(open("config.yaml"))
 
-def heartbeat_loop():
-    while True:
-        try:
-            requests.post(
-                cfg["api"]["heartbeat_url"],
-                json={"BotOnline": 1},
-                timeout=5
-            )
-        except:
-            pass
-        time.sleep(cfg["heartbeat"]["interval_seconds"])
-
 def start():
-    threading.Thread(target=heartbeat_loop, daemon=True).start()
+    def loop():
+        while True:
+            try:
+                requests.post(cfg["api"]["heartbeat_url"], json={"BotOnline": 1}, timeout=5)
+            except:
+                pass
+            time.sleep(300)
+    threading.Thread(target=loop, daemon=True).start()
