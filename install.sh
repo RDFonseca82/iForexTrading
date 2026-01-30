@@ -2,12 +2,12 @@
 
 APP_DIR="/opt/iForexTrading"
 SERVICE_NAME="iforextrading"
+PYTHON_BIN="/usr/bin/python3"
 
-echo "📥 A instalar iForexTrading..."
+echo "📥 A instalar iForexTrading (modo venv)..."
 
-# Dependências
 apt update
-apt install -y python3 python3-pip git
+apt install -y python3 python3-venv python3-pip git
 
 # Clone ou update
 if [ -d "$APP_DIR/.git" ]; then
@@ -20,8 +20,16 @@ else
     cd $APP_DIR || exit 1
 fi
 
-# Python deps
-pip3 install -r requirements.txt
+# Criar venv se não existir
+if [ ! -d "$APP_DIR/venv" ]; then
+    echo "🐍 A criar virtualenv..."
+    $PYTHON_BIN -m venv venv
+fi
+
+# Instalar dependências no venv
+echo "📦 A instalar dependências Python..."
+$APP_DIR/venv/bin/pip install --upgrade pip
+$APP_DIR/venv/bin/pip install -r requirements.txt
 
 # Criar serviço systemd
 cat <<EOF >/etc/systemd/system/$SERVICE_NAME.service
@@ -32,19 +40,19 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 $APP_DIR/main.py
+ExecStart=$APP_DIR/venv/bin/python $APP_DIR/main.py
 Restart=always
 RestartSec=5
 User=root
 WorkingDirectory=$APP_DIR
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Ativar serviço
 systemctl daemon-reload
 systemctl enable $SERVICE_NAME
 systemctl restart $SERVICE_NAME
 
-echo "✅ iForexTrading instalado e em execução"
+echo "✅ iForexTrading instalado corretamente (venv)"
