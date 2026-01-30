@@ -1,16 +1,22 @@
 import time
 
 from api_client import get_clients
-from market_data import get_candles
+from market_data import get_candles_bybit, get_candles_binance
 from strategy_falcon import falcon_strategy
-from bybit_client import has_open_position, place_order
+from bybit_client import has_open_position as bybit_has_position, place_order as bybit_place_order
+from binance_client import has_open_position as binance_has_position, place_order as binance_place_order
 from logger import log_info, log_debug, log_error
 import heartbeat
 
+# =====================================================
+# BOOT
+# =====================================================
 log_info("main", "BOT iForexTrading iniciado")
-
 heartbeat.start()
 
+# =====================================================
+# LOOP PRINCIPAL
+# =====================================================
 while True:
     try:
         clients = get_clients()
@@ -19,78 +25,136 @@ while True:
         for c in clients:
             try:
                 log_debug("main", "Processar cliente", c)
-                
+
+                # -------------------------------------------------
+                # Ativo?
+                # -------------------------------------------------
                 if c.get("BotActive") != 1:
                     log_debug("main", "BotActive=0, ignorado", c.get("IDCliente"))
                     continue
-                
-                # 🔒 Validação OBRIGATÓRIA antes de qualquer chamada à corretora
+
+                # -------------------------------------------------
+                # Campos obrigatórios vindos da API
+                # -------------------------------------------------
                 required_fields = [
+                    "TipoMoeda",
                     "LotSize",
                     "StopLoss",
                     "TakeProfit",
+                    "Corretora",
                     "CorretoraClientAPIKey",
                     "CorretoraClientAPISecret"
                 ]
-                
+
                 missing = [f for f in required_fields if not c.get(f)]
-                
+
                 if missing:
                     log_info(
                         "main",
                         "Cliente ignorado: configuração incompleta",
-                        {
-                            "missing_fields": missing
-                        },
+                        {"missing_fields": missing},
                         idcliente=c.get("IDCliente")
                     )
                     continue
-                
-                # Environment default seguro
+
+                # -------------------------------------------------
+                # Normalização
+                # -------------------------------------------------
+                corretora = c["Corretora"].lower()
+                api_key = c["CorretoraClientAPIKey"]
+                api_secret = c["CorretoraClientAPISecret"]
                 env = c.get("BybitEnvironment") or "real"
-                symbol = c.get("TipoMoeda")
-                
-                # 🔒 SÓ AGORA falamos com a Bybit
-                if has_open_position(
-                    c["CorretoraClientAPIKey"],
-                    c["CorretoraClientAPISecret"],
-                    symbol,
-                    env
-                ):
+                symbol = c["TipoMoeda"]
+
+                # -------------------------------------------------
+                # Verificar posição aberta (proteção duplicados)
+                # -------------------------------------------------
+                if corretora == "bybit":
+                    has_position = bybit_has_position(
+                        api_key,
+                        api_secret,
+                        symbol,
+                        env
+                    )
+
+                elif corretora == "binance":
+                    has_position = binance_has_position(
+                        api_key,
+                        api_secret,
+                        symbol,
+                        env
+                    )
+
+                else:
+                    log_error(
+                        "main",
+                        "Corretora não suportada",
+                        corretora,
+                        idcliente=c.get("IDCliente")
+                    )
+                    continue
+
+                if has_position:
                     log_info(
                         "main",
                         "Ordem bloqueada: posição já aberta",
-                        {"symbol": symbol},
+                        {"symbol": symbol, "corretora": corretora},
                         idcliente=c.get("IDCliente")
                     )
                     continue
 
+                # -------------------------------------------------
+                # Market data (sempre da corretora do cliente)
+                # -------------------------------------------------
+                if corretora == "bybit":
+                    df = get_candles_bybit(symbol, interval="5", env=env)
 
-                df = get_candles(symbol, interval="5", env=env)
+                elif corretora == "binance":
+                    df = get_candles_binance(symbol, interval="5m", env=env)
+
                 if df is None or df.empty:
                     log_debug("main", "Sem candles válidos", symbol)
                     continue
 
+                # -------------------------------------------------
+                # Estratégia
+                # -------------------------------------------------
                 signal = falcon_strategy(df, c)
                 log_debug("main", "Sinal calculado", signal)
 
                 if not signal:
                     continue
 
-                result = place_order(
-                    api_key=c["CorretoraClientAPIKey"],
-                    api_secret=c["CorretoraClientAPISecret"],
-                    symbol=symbol,
-                    side=signal["side"],
-                    qty=c["LotSize"],
-                    env=env,
-                    sl=signal["stop"],
-                    tp=signal["take"]
-                )
+                # -------------------------------------------------
+                # Execução
+                # -------------------------------------------------
+                if corretora == "bybit":
+                    result = bybit_place_order(
+                        api_key=api_key,
+                        api_secret=api_secret,
+                        symbol=symbol,
+                        side=signal["side"],
+                        qty=c["LotSize"],
+                        env=env,
+                        sl=signal["stop"],
+                        tp=signal["take"]
+                    )
+
+                elif corretora == "binance":
+                    result = binance_place_order(
+                        api_key=api_key,
+                        api_secret=api_secret,
+                        symbol=symbol,
+                        side=signal["side"],
+                        qty=c["LotSize"],
+                        env=env,
+                        sl=signal["stop"],
+                        tp=signal["take"]
+                    )
 
                 log_info(
                     "main",
-                    f"Ordem executada ({env.upper()})",
+                    f"Ordem executada ({corretora.upper()} | {env.upper()})",
                     result,
                     idcliente=c.get("IDCliente")
                 )
