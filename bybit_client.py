@@ -18,6 +18,10 @@ def _headers(key, sign, ts):
 
 # 🔎 VERIFICAR POSIÇÃO ABERTA
 def has_open_position(api_key, api_secret, symbol, env):
+    
+    if not api_key or not api_secret:
+        raise ValueError("API Key ou Secret em falta")
+    
     log_debug("bybit_client", "A verificar posição aberta", {
         "symbol": symbol,
         "env": env
@@ -41,6 +45,10 @@ def has_open_position(api_key, api_secret, symbol, env):
 
 # 🚀 ENVIAR ORDEM
 def place_order(api_key, api_secret, symbol, side, qty, env, sl, tp):
+
+    if not api_key or not api_secret:
+    raise ValueError("API Key ou Secret em falta")
+    
     log_debug("bybit_client", "A enviar ordem", payload)
     ts = str(int(time.time() * 1000))
     payload = {
