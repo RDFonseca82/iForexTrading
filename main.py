@@ -3,16 +3,23 @@ from api_client import get_clients
 from market_data import get_candles
 from strategy_falcon import falcon_strategy
 from bybit_client import has_open_position, place_order
-from logger import log_event
+from logger import log_info, log_debug, log_error
 import heartbeat
+
+log_info("main", "BOT iniciado")
 
 heartbeat.start()
 
 while True:
     try:
-        for c in get_clients():
+        clients = get_clients()
+        log_debug("main", "Loop clientes", clients)
 
-            if c["BotActive"] != 1 or c["Corretora"].lower() != "bybit":
+        for c in clients:
+            log_debug("main", "Processar cliente", c)
+
+            if c["BotActive"] != 1:
+                log_debug("main", "BotActive = 0, ignorado", c["IDCliente"])
                 continue
 
             env = c.get("BybitEnvironment", "real")
@@ -54,7 +61,9 @@ while True:
             )
 
         time.sleep(60)
-
+        
+    log_debug("main", "Sinal calculado", signal)
+    
     except Exception as e:
-        log_event(0, "Erro geral do BOT", str(e), "ERROR")
+        log_error("main", "Erro fatal no loop principal", e)
         time.sleep(10)
