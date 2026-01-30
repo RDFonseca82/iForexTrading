@@ -66,7 +66,7 @@ while True:
                     continue
 
 
-                df = get_candles(symbol)
+                df = get_candles(symbol, interval="5", env=env)
                 if df is None or df.empty:
                     log_debug("main", "Sem candles válidos", symbol)
                     continue
