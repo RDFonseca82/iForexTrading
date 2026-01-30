@@ -65,7 +65,7 @@ def has_open_position(api_key, api_secret, symbol, env="real") -> bool:
         log_debug("bybit_client", "Resultado posição aberta", positions)
 
         for p in positions:
-            if float(p.get("size", 0)) > 0:
+            if float(p.get("size", 0)) != 0:
                 return True
 
         return False
@@ -76,7 +76,7 @@ def has_open_position(api_key, api_secret, symbol, env="real") -> bool:
         return True
 
 # =====================================================
-# 🚀 ENVIAR ORDEM MARKET + SL + TP (BYBIT V5)
+# 🚀 ENVIAR ORDEM MARKET + SL + TP
 # =====================================================
 
 def place_order(api_key, api_secret, symbol, side, qty, env="real", sl=None, tp=None):
@@ -94,7 +94,6 @@ def place_order(api_key, api_secret, symbol, side, qty, env="real", sl=None, tp=
             "timeInForce": "GTC"
         }
 
-        # SL / TP opcionais (mas recomendados)
         if sl:
             payload["stopLoss"] = str(round(sl, 5))
 
@@ -120,9 +119,71 @@ def place_order(api_key, api_secret, symbol, side, qty, env="real", sl=None, tp=
         r.raise_for_status()
         result = r.json()
 
-        log_debug("bybit_client", "Resposta Bybit", result)
+        log_debug("bybit_client", "Resposta Bybit (order)", result)
         return result
 
     except Exception as e:
         log_error("bybit_client", "Erro ao enviar ordem", e)
         return None
+
+# =====================================================
+# 📊 OBTER TRADES FECHADOS (REALIZED PNL)
+# =====================================================
+
+def get_closed_trades(api_key, api_secret, symbol, env="real", limit=20):
+    """
+    Retorna trades FECHADOS com PnL realizado
+    """
+    try:
+        ts = str(int(time.time() * 1000))
+
+        query = (
+            f"category=linear"
+            f"&symbol={symbol}"
+            f"&limit={limit}"
+        )
+
+        sign_payload = ts + api_key + RECV_WINDOW + query
+        sign = _sign(api_secret, sign_payload)
+
+        url = f"{_base_url(env)}/v5/position/closed-pnl?{query}"
+
+        log_debug("bybit_client", "A obter trades fechados", {
+            "symbol": symbol,
+            "env": env,
+            "limit": limit
+        })
+
+        r = requests.get(
+            url,
+            headers=_headers(api_key, sign, ts),
+            timeout=10
+        )
+
+        r.raise_for_status()
+        data = r.json()
+
+        trades = data.get("result", {}).get("list", [])
+
+        parsed = []
+        for t in trades:
+            parsed_trade = {
+                "orderId": t.get("orderId"),
+                "symbol": t.get("symbol"),
+                "side": t.get("side"),
+                "entry_price": float(t.get("entryPrice", 0)),
+                "exit_price": float(t.get("exitPrice", 0)),
+                "qty": float(t.get("qty", 0)),
+                "fee": float(t.get("cumExecFee", 0)),
+                "pnl": float(t.get("closedPnl", 0)),
+                "createdTime": t.get("createdTime"),
+                "updatedTime": t.get("updatedTime")
+            }
+            parsed.append(parsed_trade)
+
+        log_debug("bybit_client", "Trades fechados obtidos", parsed)
+        return parsed
+
+    except Exception as e:
+        log_error("bybit_client", "Erro ao obter trades fechados", e)
+        return []
