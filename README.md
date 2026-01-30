@@ -1,5 +1,8 @@
 # iForexTrading
 
+Bot para utilizar com a plataforma iForex.app
+
+
 # Instalar
 
 curl -fsSL https://raw.githubusercontent.com/RDFonseca82/iForexTrading/main/install.sh -o install.sh
