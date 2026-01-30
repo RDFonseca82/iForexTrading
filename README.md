@@ -19,12 +19,16 @@ chmod +x update.sh
 
 sudo ./update.sh
 
-# Servoço
+# Serviço
 systemctl status iforextrading
 
 systemctl start iforextrading
 
 systemctl stop iforextrading
+
+# View Bot Errors
+
+journalctl -u iforextrading -n 50 --no-pager
 
 
 # JSON Cliente exemplo
