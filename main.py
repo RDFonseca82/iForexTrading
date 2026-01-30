@@ -3,16 +3,24 @@ import time
 from api_client import get_clients
 from market_data import get_candles_bybit, get_candles_binance
 from strategy_falcon import falcon_strategy
-from bybit_client import has_open_position as bybit_has_position, place_order as bybit_place_order
-from binance_client import has_open_position as binance_has_position, place_order as binance_place_order
+from bybit_client import (
+    has_open_position as bybit_has_position,
+    place_order as bybit_place_order
+)
+from binance_client import (
+    has_open_position as binance_has_position,
+    place_order as binance_place_order
+)
 from logger import log_info, log_debug, log_error
 import heartbeat
+
 
 # =====================================================
 # BOOT
 # =====================================================
 log_info("main", "BOT iForexTrading iniciado")
 heartbeat.start()
+
 
 # =====================================================
 # LOOP PRINCIPAL
@@ -30,11 +38,15 @@ while True:
                 # Ativo?
                 # -------------------------------------------------
                 if c.get("BotActive") != 1:
-                    log_debug("main", "BotActive=0, ignorado", c.get("IDCliente"))
+                    log_debug(
+                        "main",
+                        "BotActive=0, ignorado",
+                        c.get("IDCliente")
+                    )
                     continue
 
                 # -------------------------------------------------
-                # Campos obrigatórios vindos da API
+                # Campos obrigatórios
                 # -------------------------------------------------
                 required_fields = [
                     "TipoMoeda",
@@ -46,7 +58,10 @@ while True:
                     "CorretoraClientAPISecret"
                 ]
 
-                missing = [f for f in required_fields if not c.get(f)]
+                missing = [
+                    f for f in required_fields
+                    if c.get(f) in (None, "", 0)
+                ]
 
                 if missing:
                     log_info(
@@ -63,12 +78,20 @@ while True:
                 corretora = c["Corretora"].lower()
                 api_key = c["CorretoraClientAPIKey"]
                 api_secret = c["CorretoraClientAPISecret"]
-                env = c.get("BybitEnvironment") or "real"
                 symbol = c["TipoMoeda"]
 
+                # Ambiente
+                if corretora == "bybit":
+                    env = c.get("BybitEnvironment") or "real"
+                else:
+                    # Binance não diferencia real/testnet da mesma forma
+                    env = "testnet" if c.get("BybitEnvironment") == "testnet" else "real"
+
                 # -------------------------------------------------
-                # Verificar posição aberta (proteção duplicados)
+                # Verificar posição aberta (ANTI-DUPLICADOS)
                 # -------------------------------------------------
+                has_position = False
+
                 if corretora == "bybit":
                     has_position = bybit_has_position(
                         api_key,
@@ -89,7 +112,7 @@ while True:
                     log_error(
                         "main",
                         "Corretora não suportada",
-                        corretora,
+                        {"corretora": corretora},
                         idcliente=c.get("IDCliente")
                     )
                     continue
@@ -104,13 +127,21 @@ while True:
                     continue
 
                 # -------------------------------------------------
-                # Market data (sempre da corretora do cliente)
+                # Market Data
                 # -------------------------------------------------
                 if corretora == "bybit":
-                    df = get_candles_bybit(symbol, interval="5", env=env)
+                    df = get_candles_bybit(
+                        symbol,
+                        interval="5",
+                        env=env
+                    )
 
                 elif corretora == "binance":
-                    df = get_candles_binance(symbol, interval="5m", env=env)
+                    df = get_candles_binance(
+                        symbol,
+                        interval="5m",
+                        env=env
+                    )
 
                 if df is None or df.empty:
                     log_debug("main", "Sem candles válidos", symbol)
